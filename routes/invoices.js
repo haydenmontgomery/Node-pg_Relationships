@@ -61,7 +61,10 @@ router.put('/:id', async (req, res, next) => {
         if (!amt) {
             throw new ExpressError("Amount is required", 404);
         }
-
+/*         const testResults = await db.query('SELECT * FROM invoices WHERE id=$1', [id]);
+        if(testResults.rows.length === 0) {
+            throw new ExpressError(`Can't find invoice with id of ${id}`, 404);
+        } */
         const results = await db.query('UPDATE invoices SET amt=$1 WHERE id=$2 RETURNING id, comp_code, amt, paid, add_date, paid_date', [amt, id]);
         if(results.rows.length === 0) {
             throw new ExpressError(`Can't update invoice with id of ${id}`, 404);
