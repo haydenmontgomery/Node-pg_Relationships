@@ -57,15 +57,31 @@ router.post('/', async (req, res, next) => {
 router.put('/:id', async (req, res, next) => {
     try {
         const {id} = req.params;
-        let { amt } = req.body;
+        const { amt, paid } = req.body;
+        let results;
         if (!amt) {
             throw new ExpressError("Amount is required", 404);
         }
-/*         const testResults = await db.query('SELECT * FROM invoices WHERE id=$1', [id]);
+        const testResults = await db.query('SELECT * FROM invoices WHERE id=$1', [id]);
         if(testResults.rows.length === 0) {
             throw new ExpressError(`Can't find invoice with id of ${id}`, 404);
-        } */
-        const results = await db.query('UPDATE invoices SET amt=$1 WHERE id=$2 RETURNING id, comp_code, amt, paid, add_date, paid_date', [amt, id]);
+        }
+
+        if (paid == true) {
+            const timestamp = Date.now();
+            const date = new Date(timestamp);
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+
+            const paid_date = `${year}-${month}-${day}`;
+            results = await db.query('UPDATE invoices SET amt=$1, paid=$2, paid_date=$3 WHERE id=$4 RETURNING id, comp_code, amt, paid, add_date, paid_date', [amt, paid, paid_date, id]);
+        } else if (paid == false) {
+            results = await db.query('UPDATE invoices SET amt=$1, paid=false, paid_date=null WHERE id=$2 RETURNING id, comp_code, amt, paid, add_date, paid_date', [amt, id]);
+        } else {
+
+            results = await db.query('UPDATE invoices SET amt=$1, WHERE id=$2 RETURNING id, comp_code, amt, paid, add_date, paid_date', [amt, id]);
+        }
         if(results.rows.length === 0) {
             throw new ExpressError(`Can't update invoice with id of ${id}`, 404);
         }

@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const db = require("../db");
 const ExpressError = require("../expressError");
+const slugify = require('slugify');
 
 //Returns a list of all companies in the db
 router.get('/', async (req, res, next) => {
@@ -22,9 +23,21 @@ router.get('/:code', async (req, res, next) => {
             throw new ExpressError(`Can't find companies with code of ${code}`, 404);
         }
         const second_results = await db.query('SELECT * FROM invoices WHERE comp_code=$1', [code]);
+        const third_results = await db.query(`
+            SELECT i.industry
+            FROM industries AS i
+            LEFT JOIN companies_industries AS ci
+            ON ci.industry_code = i.code
+            LEFT JOIN companies AS c
+            ON c.code = ci.comp_code
+            WHERE c.code=$1
+            `, [code]);
+
+        const industryList = third_results.rows.map(ind => ind.industry);
         return res.send({ 
             company: first_results.rows[0],
-            invoices: second_results.rows
+            invoices: second_results.rows,
+            industries: industryList
         });
     } catch(e) {
         return next(e);
@@ -34,7 +47,8 @@ router.get('/:code', async (req, res, next) => {
 //creates a company
 router.post('/', async (req, res, next) => {
     try {
-        const { code, name, description } = req.body;
+        const { name, description } = req.body;
+        const code = slugify(name);
         const results = await db.query('INSERT INTO companies (code, name, description) VALUES ($1, $2, $3) RETURNING code, name, description', [code, name, description]);
         return res.status(201).json({ company: results.rows[0] });
     } catch(e) {
